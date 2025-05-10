@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("..")
 
-from datasets.datasets import CIFAR100
+from dataset.datasets import CIFAR100
 import numpy as np
 import pickle
 import os
@@ -18,7 +18,7 @@ save_dir = "../data/cifar-100-corrupt/"
 # corrupt rate r per method, total corrupt rate would be r*5
 per_corrupt_rate = 0.06
 
-trainset = CIFAR100(root, train=True)
+trainset = CIFAR100(root, train=True, download=True)
 corrupt_idx = np.random.choice(50000, int(per_corrupt_rate * 5 * 50000), replace=False)
 
 

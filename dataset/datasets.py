@@ -152,6 +152,34 @@ class CIFAR10(VisionDataset):
         return f"Split: {split}"
 
 
+class CIFAR10Corrupt(VisionDataset):
+    base_folder = "cifar-10-corrupt"
+
+    def __init__(self, root, transform=None):
+        super().__init__(root, transform=transform)
+        img_path = os.path.join(root, self.base_folder, "img.bin")
+        target_path = os.path.join(root, self.base_folder, "targets.bin")
+        with open(img_path, "rb") as f1:
+            self.data = pickle.load(f1)
+        with open(target_path, "rb") as f2:
+            self.targets = pickle.load(f2)
+        self.classes = datasets.CIFAR10(root, train=True, download=True, transform=transform).classes
+
+    def _check_integrity(self) -> bool:
+        # 重写 _check_integrity 方法，使其总是返回 True
+        return True
+
+    def __getitem__(self, index: int):
+        img, target = self.data[index], self.targets[index]
+        img = Image.fromarray(img)
+        if self.transform is not None:
+            img = self.transform(img)
+        return img, target
+
+    def __len__(self):
+        return len(self.data)
+
+
 class CIFAR100(CIFAR10):
     """`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
 
@@ -211,7 +239,7 @@ class CIFAR100Corrupt(VisionDataset):
         if self.transform is not None:
             img = self.transform(img)
         return img, target
-        #return index, img, target
+        # return index, img, target
 
     def __len__(self):
         return len(self.data)
@@ -225,13 +253,15 @@ class CIFAR100CorruptCore(CIFAR100Corrupt):
         self.targets = np.array(self.targets)
         self.targets = np.delete(self.targets, drop_id, axis=0)
 
+
 class CIFAR10Noisy(CIFAR10):
     def __init__(self, root, **kwargs):
         super().__init__(root=root, **kwargs)
         label_path = os.path.join(root, "noisy/cifar10.npy")
         self.targets = np.load(label_path)
 
-class CIFAR10Corrupt(CIFAR10):
+
+class CIFAR10Corrupt(VisionDataset):
     base_folder = "cifar-10-corrupt"
 
     def __init__(self, root, transform=None):
@@ -257,6 +287,8 @@ class CIFAR10Corrupt(CIFAR10):
 
     def __len__(self):
         return len(self.data)
+
+
 class CIFAR100Noisy(CIFAR100):
     def __init__(self, root, **kwargs):
         super().__init__(root=root, **kwargs)
@@ -380,10 +412,10 @@ class IMBALANCECIFAR10(torchvision.datasets.CIFAR10):
                 print("Class: {}, Number of samples: {}".format(cls_idx, num))
                 img_num_per_cls.append(int(num))
         elif imb_type == 'fixed':
-            first_num  =imb_factor
-            second_num =imb_factor_second
-            img_num_per_cls.append(int(img_max*first_num))
-            img_num_per_cls.append(int(img_max*second_num))
+            first_num = imb_factor
+            second_num = imb_factor_second
+            img_num_per_cls.append(int(img_max * first_num))
+            img_num_per_cls.append(int(img_max * second_num))
         elif imb_type == 'binary_step':
             second_num = img_max * (imb_factor ** (1 / (self.cls_num - 1.0)))
             first_num = img_max - second_num
@@ -423,6 +455,7 @@ class IMBALANCECIFAR10(torchvision.datasets.CIFAR10):
             cls_num_list.append(self.num_per_cls_dict[i])
         return cls_num_list
 
+
 class IMBALANCECIFAR100(torchvision.datasets.CIFAR100):
 
     def __init__(self, root, imb_type='exp', imb_factor=0.01, rand_number=0, train=True,
@@ -433,7 +466,7 @@ class IMBALANCECIFAR100(torchvision.datasets.CIFAR100):
         self.cls_num = 100
 
         self.img_num_list = self.get_img_num_per_cls(imb_type, imb_factor, imb_factor_second)
-        self.gen_imbalanced_data(self.img_num_list )
+        self.gen_imbalanced_data(self.img_num_list)
 
     def get_img_num_per_cls(self, imb_type, imb_factor, imb_factor_second=None):
         img_max = len(self.data) / self.cls_num
@@ -446,10 +479,10 @@ class IMBALANCECIFAR100(torchvision.datasets.CIFAR100):
                 print("Class: {}, Number of samples: {}".format(cls_idx, num))
                 img_num_per_cls.append(int(num))
         elif imb_type == 'fixed':
-            first_num  =imb_factor
-            second_num =imb_factor_second
-            img_num_per_cls.append(int(img_max*first_num))
-            img_num_per_cls.append(int(img_max*second_num))
+            first_num = imb_factor
+            second_num = imb_factor_second
+            img_num_per_cls.append(int(img_max * first_num))
+            img_num_per_cls.append(int(img_max * second_num))
         elif imb_type == 'binary_step':
             second_num = img_max * (imb_factor ** (1 / (self.cls_num - 1.0)))
             first_num = img_max - second_num
@@ -489,16 +522,19 @@ class IMBALANCECIFAR100(torchvision.datasets.CIFAR100):
             cls_num_list.append(self.num_per_cls_dict[i])
         return cls_num_list
 
+
 def get_caltech_datasets(root="./data/", return_extra_train=True):
     # 每个类别用于训练的样本数量
     NUM_TRAINING_SAMPLES_PER_CLASS = 60
     ds = Caltech256(root)
     # 每个类别的起始索引
-    class_start_idx = [0]+ [i for i in np.arange(1, len(ds)) if ds.y[i]==ds.y[i-1]+1]
+    class_start_idx = [0] + [i for i in np.arange(1, len(ds)) if ds.y[i] == ds.y[i - 1] + 1]
     # 生成训练集的索引
-    train_indices = sum([np.arange(start_idx,start_idx + NUM_TRAINING_SAMPLES_PER_CLASS).tolist() for start_idx in class_start_idx],[])
+    train_indices = sum(
+        [np.arange(start_idx, start_idx + NUM_TRAINING_SAMPLES_PER_CLASS).tolist() for start_idx in class_start_idx],
+        [])
     # 生成测试集的索引
-    test_indices = list((set(np.arange(1, len(ds))) - set(train_indices) ))
+    test_indices = list((set(np.arange(1, len(ds))) - set(train_indices)))
     train_set = Subset(ds, train_indices)
     test_set = Subset(ds, test_indices)
     # 创建一个额外的训练集对象，该对象与train_set相同
@@ -507,7 +543,7 @@ def get_caltech_datasets(root="./data/", return_extra_train=True):
     class_targets = np.array([ds.y[idx] for idx in test_indices])
     counts = np.unique(class_targets, return_counts=True)[1]
     # 计算类别权重，这里使用的是平衡权重的倒数，目的是在损失函数中对不平衡的类别进行调整
-    class_weights = counts.sum()/(counts*len(counts))
+    class_weights = counts.sum() / (counts * len(counts))
     class_weights = torch.Tensor(class_weights)
     # 训练集的类别标签
     train_labels = np.array([ds.y[idx] for idx in train_indices])
@@ -530,7 +566,8 @@ def get_tinyimagenet_datasets(root="./data/tiny-imagenet-200", return_extra_trai
     else:
         return train_set, test_set, None, train_labels
 
-def get_tinyimagenet_Noisy(root="./data/tiny-imagenet-200",return_extra_train=True):
+
+def get_tinyimagenet_Noisy(root="./data/tiny-imagenet-200", return_extra_train=True):
     train_set = TinyNoisy(root=root)
     test_set = TinyImageNet(root, split='val')
     train_set_2 = TinyNoisy(root=root)
@@ -553,6 +590,7 @@ def get_imagenet_datasets(root="./data/imagenet", return_extra_train=True):
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_cifar10_datasets(root="./data/cifar-10", return_extra_train=True):
     train_set = torchvision.datasets.CIFAR10(root, train=True, download=True)
     test_set = torchvision.datasets.CIFAR10(root, train=False, download=True)
@@ -564,6 +602,7 @@ def get_cifar10_datasets(root="./data/cifar-10", return_extra_train=True):
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_cifar100_datasets(root="./data/cifar-100", return_extra_train=True):
     train_set = torchvision.datasets.CIFAR100(root, train=True, download=True)
     test_set = torchvision.datasets.CIFAR100(root, train=False, download=True)
@@ -574,6 +613,7 @@ def get_cifar100_datasets(root="./data/cifar-100", return_extra_train=True):
         return train_set, test_set, train_set_2, None, train_labels
     else:
         return train_set, test_set, None, train_labels
+
 
 def get_all_svhn_datasets(root="./data/svhn", return_extra_train=True):
     train_set = torchvision.datasets.SVHN(root, split='train', download=True)
@@ -597,6 +637,7 @@ def get_all_svhn_datasets(root="./data/svhn", return_extra_train=True):
     else:
         return total_train_set, test_set, None, train_labels
 
+
 def get_core_svhn_datasets(root="./data/svhn", return_extra_train=True):
     train_set = torchvision.datasets.SVHN(root, split='train', download=True)
     test_set = torchvision.datasets.SVHN(root, split='test', download=True)
@@ -608,6 +649,7 @@ def get_core_svhn_datasets(root="./data/svhn", return_extra_train=True):
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_CIFAR10_imbalanced_datasets(root="./data/cifar-10", return_extra_train=True):
     train_set = IMBALANCECIFAR10(root=root, train=True, download=True)
     test_set = IMBALANCECIFAR10(root=root, train=False, download=True)
@@ -618,6 +660,7 @@ def get_CIFAR10_imbalanced_datasets(root="./data/cifar-10", return_extra_train=T
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_CIFAR100_imbalanced_datasets(root="./data/cifar-100", return_extra_train=True):
     train_set = IMBALANCECIFAR100(root=root, train=True, download=True)
     test_set = IMBALANCECIFAR100(root=root, train=False, download=True)
@@ -627,6 +670,7 @@ def get_CIFAR100_imbalanced_datasets(root="./data/cifar-100", return_extra_train
         return train_set, test_set, train_set_2, None, train_labels
     else:
         return train_set, test_set, None, train_labels
+
 
 def get_CIFAR100Corrupt(root="./data", return_extra_train=True):
     train_set = CIFAR100Corrupt(root=root)
@@ -639,11 +683,15 @@ def get_CIFAR100Corrupt(root="./data", return_extra_train=True):
         return train_set, test_set, None, train_labels
 
 
-def get_CIFAR100Noisy(root="./data",return_extra_train=True):
+def get_CIFAR100Noisy(root="./data", return_extra_train=True):
     train_set = CIFAR100Noisy(root=root)
     test_set = torchvision.datasets.CIFAR100(root="./data/cifar-100", train=False, download=True)
     train_set_2 = CIFAR100Noisy(root=root)
     train_labels = train_set.targets
+    total = [0] * len(list(set(train_labels)))
+    for i in train_labels:
+        total[i] += 1
+    print(total)
     if return_extra_train:
         return train_set, test_set, train_set_2, None, train_labels
     else:
@@ -686,6 +734,7 @@ class CIFAR10IM(CIFAR10):
         self.data = data
         self.targets = targets
 
+
 def get_CIFAR10IM(root="./data", return_extra_train=True):
     train_set = CIFAR10IM(root=root, train=True, download=True)
     test_set = torchvision.datasets.CIFAR10(root=root, train=False, download=True)
@@ -697,6 +746,7 @@ def get_CIFAR10IM(root="./data", return_extra_train=True):
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_CIFAR10Corrupt(root="./data", return_extra_train=True):
     train_set = CIFAR10Corrupt(root=root)
     test_set = torchvision.datasets.CIFAR10(root="./data/cifar-10", train=False, download=True)
@@ -707,11 +757,17 @@ def get_CIFAR10Corrupt(root="./data", return_extra_train=True):
     else:
         return train_set, test_set, None, train_labels
 
+
 def get_CIFAR10Noisy(root="./data", return_extra_train=True):
     train_set = CIFAR10Noisy(root=root)
+    print(train_set.targets)
     test_set = torchvision.datasets.CIFAR10(root="./data/cifar-10", train=False, download=True)
     train_set_2 = CIFAR10Noisy(root=root)
     train_labels = train_set.targets
+    total = [0] * len(list(set(train_labels)))
+    for i in train_labels:
+        total[i] += 1
+    print(total)
     if return_extra_train:
         return train_set, test_set, train_set_2, None, train_labels
     else:

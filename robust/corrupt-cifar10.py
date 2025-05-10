@@ -18,7 +18,7 @@ save_dir = "../data/cifar-10-corrupt/"
 # corrupt rate r per method, total corrupt rate would be r*5
 per_corrupt_rate = 0.06
 
-trainset = CIFAR10(root, train=True)
+trainset = CIFAR10(root, train=True, download=True)
 corrupt_idx = np.random.choice(50000, int(per_corrupt_rate * 5 * 50000), replace=False)
 
 
